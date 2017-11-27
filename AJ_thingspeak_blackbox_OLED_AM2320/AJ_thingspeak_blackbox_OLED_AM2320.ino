@@ -13,10 +13,12 @@
 #include <Wire.h>
 #include <SPI.h>
 #include "SSD1306.h"
-#include "SSD1306Ui.h"
+#include "OLEDDisplayUi.h" //new style
+//#include "SSD1306Ui.h"
 #include "images.h"
 #include <AM2320.h>
 //#include <AM2321.h>
+#include "wifi.h"
 // ===============================================
 char degSymbol[3] = { 0xC2, 0xB0, 0x00 }; // degree symbol(0xB0 or 176) in the extended ascii set
 
@@ -50,9 +52,6 @@ String field7 = "&field7=";
 String field8 = "&field8=";
 String get_end = "Connection: keep-alive\r\n\r\n";
 
-// ------------------Wifi settings----------------
-const char* ssid = "SSID";
-const char* pass = "PASS";
 // ------------------DS18B20 sensor text output---
 //char temperatureString[6] = "test"; //DS18B20
 // ------------------DS1621 sensor --------------
@@ -82,21 +81,31 @@ char AM2320humidityString[8] = "test_RH";
 //DallasTemperature DS18B20(&oneWire);
 // ------------------Initialize Display-----------
 SSD1306   display(OLED_ADDR, OLED_SDA, OLED_SDC);    // For I2C
-SSD1306Ui ui     ( &display );
+//SSD1306Ui ui     ( &display );
+OLEDDisplayUi ui     ( &display ); //new style
 
 //Explicit prototype
-bool msOverlay(SSD1306 *display, SSD1306UiState* state);
-bool drawFrame1(SSD1306 *display, SSD1306UiState* state, int x, int y);
-bool drawFrame2(SSD1306 *display, SSD1306UiState* state, int x, int y);
-bool drawFrame3(SSD1306 *display, SSD1306UiState* state, int x, int y);
+void msOverlay(OLEDDisplay *display, OLEDDisplayUiState* state);
+void drawFrame1(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y);
+void drawFrame2(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y);
+void drawFrame3(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y);
 
-bool (*frames[])(SSD1306 *display, SSD1306UiState* state, int x, int y) = { drawFrame1, drawFrame2, drawFrame3 };
+FrameCallback frames[] = { drawFrame1, drawFrame2, drawFrame3 };
+OverlayCallback overlays[] = { msOverlay };
 
 // how many frames are there?
 int frameCount = 3;
-
-bool (*overlays[])(SSD1306 *display, SSD1306UiState* state)             = { msOverlay };
 int overlaysCount = 1;
+
+//Explicit prototype - old
+//bool msOverlay(SSD1306 *display, SSD1306UiState* state);
+//bool drawFrame1(SSD1306 *display, SSD1306UiState* state, int x, int y);
+//bool drawFrame2(SSD1306 *display, SSD1306UiState* state, int x, int y);
+//bool drawFrame3(SSD1306 *display, SSD1306UiState* state, int x, int y);
+
+//bool (*frames[])(SSD1306 *display, SSD1306UiState* state, int x, int y) = { drawFrame1, drawFrame2, drawFrame3 };
+//bool (*overlays[])(SSD1306 *display, SSD1306UiState* state)             = { msOverlay };
+
 
 // ===============================================
 // -----------------------------------------------
@@ -158,12 +167,13 @@ void setup(void){
   // -----------------------------------------------
   ui.setTargetFPS(30);
 
-  ui.setActiveSymbole(activeSymbole);
-  ui.setInactiveSymbole(inactiveSymbole);
+//  ui.setActiveSymbole(activeSymbole);
+//  ui.setInactiveSymbole(inactiveSymbole);
 
   ui.setIndicatorPosition(RIGHT);
   ui.setIndicatorDirection(LEFT_RIGHT);
   ui.setFrameAnimation(SLIDE_LEFT);
+  ui.disableAutoTransition();
 
   // Add frames and overlays
   ui.setFrames(frames, frameCount);
@@ -331,13 +341,14 @@ void postToThingspeak()
 }  
 // ===============================================
 // ------------------OLED Frame 1-----------------
-bool drawFrame1(SSD1306 *display, SSD1306UiState* state, int x, int y) {
+void drawFrame1(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
+//bool drawFrame1(SSD1306 *display, SSD1306UiState* state, int x, int y) {
   display->drawXbm(x + 34, y + 14, WiFi_Logo_width, WiFi_Logo_height, WiFi_Logo_bits);
-  return false;
   }
 // ===============================================
 // ------------------OLED Frame 2-----------------
-bool drawFrame2(SSD1306 *display, SSD1306UiState* state, int x, int y) {
+void drawFrame2(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
+//  bool drawFrame2(SSD1306 *display, SSD1306UiState* state, int x, int y) {
   display->setTextAlignment(TEXT_ALIGN_LEFT);
   display->setFont(ArialMT_Plain_10);
   display->drawString(0 + x, 10 + y, "Home Automation");
@@ -350,12 +361,11 @@ bool drawFrame2(SSD1306 *display, SSD1306UiState* state, int x, int y) {
   s.concat( degSymbol );
   s.concat( "C" );
   display->drawString(0 + x, 34 + y, s);
-
-  return false;
 }
 // ===============================================
 // ------------------OLED Frame 3-----------------
-bool drawFrame3(SSD1306 *display, SSD1306UiState* state, int x, int y) {
+//bool drawFrame3(SSD1306 *display, SSD1306UiState* state, int x, int y) {
+void drawFrame3(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {  
   display->setTextAlignment(TEXT_ALIGN_LEFT);
   display->setFont(ArialMT_Plain_10);
   display->drawString(0 + x, 10 + y, "Home Automation");
@@ -368,16 +378,14 @@ bool drawFrame3(SSD1306 *display, SSD1306UiState* state, int x, int y) {
   s.concat( "%" );
   s.concat( "RH" );
   display->drawString(0 + x, 34 + y, s);
-
-  return false;
 }
 // ===============================================
 // ------------------OLED Overlay-----------------
-bool msOverlay(SSD1306 *display, SSD1306UiState* state) {
+// bool msOverlay(SSD1306 *display, SSD1306UiState* state) {
+void msOverlay(OLEDDisplay *display, OLEDDisplayUiState* state) {
   display->setTextAlignment(TEXT_ALIGN_RIGHT);
   display->setFont(ArialMT_Plain_10);
   display->drawString(128, 0, String(millis()));
-  return true;
 }
 
 // ===============================================
